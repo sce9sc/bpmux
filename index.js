@@ -852,10 +852,29 @@ function BPMux(carrier, options)
             }
         }
 
-        ths.emit('error', err);
+       // ths.emit('error', err);
     }
 
-    carrier.on('error', error);
+     function carrierError(err)
+    {
+        // check_remove() is always called when _finished or _ended is set on a duplex,
+        // so it will have been removed from duplex. Apart from above in end(),
+        // where the duplex is destroyed, which we check below anyway (check_remove()
+        // will eventually be called there too via the duplex's 'close' handler).
+        for (var duplex of ths.duplexes.values())
+        {
+            if (!duplex._removed && // in case destroyed by previous iteration's error handler
+                !duplex.destroyed &&
+                (duplex.listenerCount('error') > 0))
+            {
+                duplex.emit('error', err);
+            }
+        }
+
+        ths.emit('error', err, 'carrier');
+    }
+
+    carrier.on('error', carrierError);
     this._in_stream.on('error', error);
     this._out_stream.on('error', error);
 
